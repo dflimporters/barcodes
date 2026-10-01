@@ -41,10 +41,22 @@ Barcode source files live in the private Supabase Storage bucket **`product-barc
 (project `hzagwndglwhcepsirafi`). Staff can read it; only Joel, Scott and Travis can upload or delete.
 Upload through the Supabase dashboard. The page loads the list once per session.
 
-The parser currently reads the UPC from the file name (`<UPC> - <Product name>.<ext>`) and reads
-CSV files with `name` and `upc` columns. Entries with a missing or invalid UPC are flagged in the
-library under **Show problems**, never silently dropped. The final bulk-upload format will be
-confirmed once the test files are in.
+**Barcode files** supply the UPC, which must be at the front of the file name:
+`UPC-12-765464395832 - Soft Plus Tissue.pdf`, `765464395832 - Soft Plus Tissue.jpg` and
+`EAN-13-6937463000411 - ….pdf` all work. Any file type is fine; only the name is read, and the
+barcode is always redrawn as vector.
+
+**Label names.** The rest of the file name is used as the printed name unless
+`label-names.csv` (columns `upc,name`) gives a better one. To shorten names:
+
+1. Click **Download names list** in the Product library. It exports every product as `label-names.csv`.
+2. Open it in Excel and shorten the `name` column. Leave a name blank to keep the file name.
+3. Save as CSV and upload it to the bucket, replacing the old one. Reload the page.
+
+Rows in the CSV can also add products that have no file. UPCs are matched even if Excel
+dropped a leading zero, but a new 11-digit UPC in the CSV is flagged rather than guessed.
+Missing UPCs, bad check digits and duplicates show under **Show problems**; nothing is silently dropped.
+Names can always be edited in the queue for a one-off print.
 
 ## Development
 

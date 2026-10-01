@@ -129,7 +129,8 @@
     xNominal: 0.013,   // 100% UPC magnification
     xMin: 0.0104,      // 80%
     quiet: 9,          // quiet zone each side, in modules
-    minBarHeight: 0.45
+    minBarHeight: 0.45,
+    insetY: 1.5 / 25.4 // extra 1.5 mm off the top and bottom of the content (from the first test print)
   };
 
   // Shrink to fit between max and min size, then truncate with "...".
@@ -155,8 +156,8 @@
     const lh = layout.label.h;
     const pad = layout.padding;
     const innerW = lw - 2 * pad;
-    const top = pad;
-    const bottom = lh - pad;
+    const top = pad + SPEC.insetY;
+    const bottom = lh - pad - SPEC.insetY;
     const out = [];
 
     const name = fitText(item.name, innerW, measure);
@@ -263,9 +264,90 @@
     return { name, upc };
   }
 
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], cell = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) {
+        if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+        else if (ch === '"') q = false;
+        else cell += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell); rows.push(row); row = []; cell = '';
+      } else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(r => r.some(c => c.trim()));
+  }
+
+  function libraryEntry(name, upc, source, forcedError) {
+    const code = parseCode(upc);
+    return { name, upc, source, code, error: forcedError || (code.ok ? '' : code.error) };
+  }
+
+  // CSV with a header containing a UPC column (upc/barcode/ean/gtin) and a name column
+  // (name/product/description/item). Without a header, columns are name, upc.
+  function csvEntries(text, path) {
+    const rows = parseCsv(text.replace(/^﻿/, ''));
+    if (!rows.length) return [];
+    const head = rows[0].map(h => h.trim().toLowerCase());
+    let ni = head.findIndex(h => /^(product|name|description|item)/.test(h));
+    let ui = head.findIndex(h => /(upc|barcode|ean|gtin)/.test(h));
+    let data = rows.slice(1);
+    let firstRow = 2;
+    if (ui < 0) { ni = 0; ui = 1; data = rows; firstRow = 1; }
+    if (ni < 0) ni = ui === 0 ? 1 : 0;
+    return data.map((r, i) => {
+      const upc = (r[ui] || '').replace(/[="]/g, '').trim(); // ="0123..." keeps Excel from eating zeros
+      // Excel drops leading zeros, so 11 digits in a spreadsheet is ambiguous: flag it, don't guess.
+      const short = /^\d{11}$/.test(upc.replace(/[\s-]/g, ''));
+      return libraryEntry((r[ni] || '').trim(), upc, `${path} row ${i + firstRow}`,
+        short ? 'Only 11 digits. Excel may have dropped a leading 0; enter all 12' : '');
+    });
+  }
+
+  const zeroKey = digits => digits.replace(/^0+/, '');
+
+  // filePaths: names of barcode files in the bucket. csvFiles: [{ path, text }].
+  // Files supply the UPC and a fallback name. CSV rows override the printed name by UPC
+  // (matching even if a leading zero was lost) and can add products that have no file.
+  // Problems (no UPC, bad check digit, duplicates) stay in the list with `error` set.
+  function buildLibrary(filePaths, csvFiles) {
+    const byKey = new Map();
+    const out = [];
+    for (const path of filePaths) {
+      const { name, upc } = parseFilename(path);
+      const e = libraryEntry(name, upc, path, upc ? '' : 'No UPC in file name');
+      if (!e.error) {
+        const first = byKey.get(zeroKey(e.code.digits));
+        if (first) e.error = `Duplicate UPC (also in ${first.source})`;
+        else byKey.set(zeroKey(e.code.digits), e);
+      }
+      out.push(e);
+    }
+    for (const { path, text } of csvFiles) {
+      for (const row of csvEntries(text, path)) {
+        const raw = row.upc.replace(/[\s-]/g, '');
+        const match = /^\d+$/.test(raw) ? byKey.get(zeroKey(raw)) : null;
+        if (match) {
+          if (row.name) { match.name = row.name; match.nameFrom = row.source; }
+        } else {
+          if (!row.error) byKey.set(zeroKey(row.code.digits), row);
+          out.push(row);
+        }
+      }
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   const api = {
     LAYOUTS, SPEC, perPage, labelOrigin, checkDigit, parseCode, encode, barRuns,
-    fitText, labelPrimitives, calibrationPrimitives, paginate, remainingOnSheet, parseFilename
+    fitText, labelPrimitives, calibrationPrimitives, paginate, remainingOnSheet,
+    parseFilename, parseCsv, buildLibrary
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.LabelCore = api;

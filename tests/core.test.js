@@ -139,6 +139,35 @@ test('library file names yield product name and UPC', () => {
   }
 });
 
+test('label-names.csv overrides file names by UPC, even after Excel drops a leading zero', () => {
+  const files = [
+    'UPC-12-765464395832 - Soft Plus Tissue (Temporary).pdf',
+    '099451154806 - #2 Kraft Box Brown Takeout Container Large Size 200pcs.jpg',
+    '843490029218 - Covebay 10in Plate.png',
+    'Corned Beef Barcode 12oz.jpg',
+    'copy/843490029218 - Covebay 10in Plate.png'
+  ];
+  const csv = 'upc,name,file\r\n' +
+    '="765464395832",Soft Plus Tissue,x.pdf\r\n' +
+    '99451154806,#2 Kraft Box,y.jpg\r\n' +          // Excel ate the leading 0
+    '843490029218,,z.png\r\n' +                     // blank name keeps the file name
+    '6937463000411,White & Bright 4kg,\r\n' +       // product with no file
+    '12345678901,Ambiguous,\r\n';                   // 11 digits in a sheet: flagged
+  const lib = C.buildLibrary(files, [{ path: 'label-names.csv', text: csv }]);
+  const byUpc = Object.fromEntries(lib.filter(e => !e.error).map(e => [e.code.digits, e.name]));
+  assert.deepEqual(byUpc, {
+    '765464395832': 'Soft Plus Tissue',
+    '099451154806': '#2 Kraft Box',
+    '843490029218': 'Covebay 10in Plate',
+    '6937463000411': 'White & Bright 4kg'
+  });
+  const errors = lib.filter(e => e.error).map(e => e.error);
+  assert.equal(errors.length, 3);
+  assert.ok(errors.some(e => /No UPC in file name/.test(e)));
+  assert.ok(errors.some(e => /Duplicate UPC/.test(e)));
+  assert.ok(errors.some(e => /Only 11 digits/.test(e)));
+});
+
 test('long names shrink then truncate', () => {
   const short = C.fitText('Soft Plus Tissue', 2.465, measure);
   assert.equal(short.pt, 9);

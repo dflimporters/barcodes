@@ -382,64 +382,22 @@
     }
   }
 
-  function entryFromFilename(path) {
-    const { name, upc } = C.parseFilename(path);
-    return makeEntry(name, upc, path, upc ? '' : 'No UPC in file name');
-  }
-
-  function makeEntry(name, upc, source, forcedError) {
-    const code = C.parseCode(upc);
-    return { name, upc, source, code, error: forcedError || (code.ok ? '' : code.error) };
-  }
-
-  function parseCsv(text) {
-    const rows = [];
-    let row = [], cell = '', q = false;
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
-      if (q) {
-        if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
-        else if (ch === '"') q = false;
-        else cell += ch;
-      } else if (ch === '"') q = true;
-      else if (ch === ',') { row.push(cell); cell = ''; }
-      else if (ch === '\n' || ch === '\r') {
-        if (ch === '\r' && text[i + 1] === '\n') i++;
-        row.push(cell); rows.push(row); row = []; cell = '';
-      } else cell += ch;
-    }
-    if (cell || row.length) { row.push(cell); rows.push(row); }
-    return rows.filter(r => r.some(c => c.trim()));
-  }
-
-  function entriesFromCsv(text, path) {
-    const rows = parseCsv(text.replace(/^﻿/, ''));
-    if (!rows.length) return [];
-    const head = rows[0].map(h => h.trim().toLowerCase());
-    let ni = head.findIndex(h => /^(product|name|description|item)/.test(h));
-    let ui = head.findIndex(h => /(upc|barcode|ean|gtin)/.test(h));
-    let data = rows.slice(1);
-    if (ui < 0) { ni = 0; ui = 1; data = rows; } // no header: name, upc
-    if (ni < 0) ni = ui === 0 ? 1 : 0;
-    return data.map((r, i) => makeEntry((r[ni] || '').trim(), (r[ui] || '').trim(), `${path} row ${i + 2}`));
-  }
-
   async function loadLibrary() {
     $('libStatus').textContent = 'Loading product library…';
     try {
       const paths = await listAll('', 0);
-      const entries = [];
+      const files = [];
+      const csvs = [];
       for (const path of paths) {
         if (/\.csv$/i.test(path)) {
           const { data, error } = await sb.storage.from(BUCKET).download(path);
           if (error) throw error;
-          entries.push(...entriesFromCsv(await data.text(), path));
+          csvs.push({ path, text: await data.text() });
         } else {
-          entries.push(entryFromFilename(path));
+          files.push(path);
         }
       }
-      entries.sort((a, b) => a.name.localeCompare(b.name));
-      state.library = entries;
+      state.library = C.buildLibrary(files, csvs);
     } catch (e) {
       console.error('Library load failed:', e);
       state.library = [];
@@ -458,6 +416,7 @@
       : `${lib.length} product${lib.length === 1 ? '' : 's'}` +
         (bad.length ? ` · <span class="bad">${bad.length} need${bad.length === 1 ? 's' : ''} attention</span>` : '');
     $('libBadToggle').hidden = !bad.length;
+    $('libExport').hidden = !lib.some(e => !e.error);
 
     const terms = $('libSearch').value.toLowerCase().split(/\s+/).filter(Boolean);
     let list = showBad ? bad : lib;
@@ -477,6 +436,20 @@
         : `<li><button type="button" data-lib="${idx}"><b>${esc(e.name || '(no name)')}</b>` +
           `<span class="mono">${esc(e.code.digits)}</span><span class="add">Add</span></button></li>`;
     }).join('') + (list.length > 50 ? `<li class="more">${list.length - 50} more. Refine the search.</li>` : '');
+  }
+
+  // Editable names list: shorten names in Excel, save as CSV, upload as label-names.csv.
+  // UPCs are written as ="..." so Excel keeps leading zeros.
+  function downloadNamesList() {
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const rows = (state.library || []).filter(e => !e.error)
+      .map(e => [`="${e.code.digits}"`, q(e.name), q(e.source.split('/').pop())].join(','));
+    const csv = '﻿upc,name,file\r\n' + rows.join('\r\n') + '\r\n';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'label-names.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
   }
 
   function addFromLibrary(idx) {
@@ -527,6 +500,7 @@
       if (first) addFromLibrary(+first.dataset.lib);
     });
     $('libShowBad').addEventListener('change', renderLibrary);
+    $('libExport').addEventListener('click', downloadNamesList);
     $('libResults').addEventListener('click', e => {
       const b = e.target.closest('button[data-lib]');
       if (b) addFromLibrary(+b.dataset.lib);
