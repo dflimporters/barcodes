@@ -130,7 +130,9 @@
     xMin: 0.0104,      // 80%
     quiet: 9,          // quiet zone each side, in modules
     minBarHeight: 0.45,
-    insetY: 1.5 / 25.4 // extra 1.5 mm off the top and bottom of the content (from the first test print)
+    // Vertical fine-tuning from test prints, in inches (positive = further from the label edge).
+    insetTop: -0.5 / 25.4,  // print 1: -1.5 mm; print 2: content sat low, extended up 2 mm
+    insetBottom: 1.5 / 25.4 // print 1: -1.5 mm
   };
 
   // Shrink to fit between max and min size, then truncate with "...".
@@ -156,8 +158,8 @@
     const lh = layout.label.h;
     const pad = layout.padding;
     const innerW = lw - 2 * pad;
-    const top = pad + SPEC.insetY;
-    const bottom = lh - pad - SPEC.insetY;
+    const top = pad + SPEC.insetTop;
+    const bottom = lh - pad - SPEC.insetBottom;
     const out = [];
 
     const name = fitText(item.name, innerW, measure);
