@@ -124,6 +124,21 @@ test('label content stays inside the padded area at 100% magnification', () => {
   assert.ok(Math.max(...rects.map(r => r.y + r.h)) <= layout.label.h - layout.padding, 'bars inside padding');
 });
 
+test('library file names yield product name and UPC', () => {
+  const cases = {
+    'UPC-12-765464395832 - Soft Plus Tissue (Temporary).pdf': ['Soft Plus Tissue (Temporary)', '765464395832'],
+    'folder/UPC-12-765464395832 - Soft Plus Tissue.pdf': ['Soft Plus Tissue', '765464395832'],
+    '099451154806 - #2  Kraft Box.jpg': ['#2 Kraft Box', '099451154806'],
+    'upc-a_720665774718 - 16oz Champagne 20pk.jpg': ['16oz Champagne 20pk', '720665774718'],
+    'EAN-13-6937463000411 - White & Bright 4kg.pdf': ['White & Bright 4kg', '6937463000411'],
+    'White & Bright 4kg Barcode 6937463000411.jpg': ['White & Bright 4kg', '6937463000411'],
+    'Corned Beef Barcode 12oz.jpg': ['Corned Beef 12oz', '']
+  };
+  for (const [file, [name, upc]] of Object.entries(cases)) {
+    assert.deepEqual(C.parseFilename(file), { name, upc }, file);
+  }
+});
+
 test('long names shrink then truncate', () => {
   const short = C.fitText('Soft Plus Tissue', 2.465, measure);
   assert.equal(short.pt, 9);

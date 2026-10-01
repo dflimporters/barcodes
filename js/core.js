@@ -245,9 +245,27 @@
     return per - ((start - 1 + usedBefore) % per);
   }
 
+  // ---- Library file names -------------------------------------------------
+  // "UPC-12-765464395832 - Soft Plus Tissue.pdf" -> { upc: '765464395832', name: 'Soft Plus Tissue' }
+  // Also handles "upc-a_720665774718 - 16oz Champagne.jpg" and "099451154806 - #2 Kraft Box.jpg".
+  function parseFilename(path) {
+    const base = String(path).split('/').pop()
+      .replace(/\.[a-z0-9]+$/i, '')
+      .replace(/^\s*(upc|ean|gtin)([\s_-]?(a|e|8|12|13|14))?[\s_-]*/i, '');
+    const m = base.match(/(?:^|\D)(\d{11,13})(?!\d)/);
+    const upc = m ? m[1] : '';
+    const name = (m ? base.replace(m[1], ' ') : base)
+      .replace(/_/g, ' ')
+      .replace(/\b(barcode|label)\b/gi, ' ')
+      .replace(/(^|\s)-+(?=\s|$)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return { name, upc };
+  }
+
   const api = {
     LAYOUTS, SPEC, perPage, labelOrigin, checkDigit, parseCode, encode, barRuns,
-    fitText, labelPrimitives, calibrationPrimitives, paginate, remainingOnSheet
+    fitText, labelPrimitives, calibrationPrimitives, paginate, remainingOnSheet, parseFilename
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.LabelCore = api;

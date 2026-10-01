@@ -382,19 +382,8 @@
     }
   }
 
-  // "099451154806 - #2 Kraft Box.jpg" -> { name: '#2 Kraft Box', upc: '099451154806' }
-  // PROVISIONAL: confirm against the real test uploads before the bulk upload.
   function entryFromFilename(path) {
-    const base = path.split('/').pop().replace(/\.[a-z0-9]+$/i, '');
-    const m = base.match(/(?:^|\D)(\d{11,13})(?!\d)/);
-    const upc = m ? m[1] : '';
-    const name = (m ? base.replace(m[1], ' ') : base)
-      .replace(/^\s*(upc-?a|ean-?13|barcode)[\s_-]+/i, '')
-      .replace(/_/g, ' ')
-      .replace(/\b(barcode|label)\b/gi, ' ')
-      .replace(/(^|\s)-+(\s|$)/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const { name, upc } = C.parseFilename(path);
     return makeEntry(name, upc, path, upc ? '' : 'No UPC in file name');
   }
 
