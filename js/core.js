@@ -130,9 +130,10 @@
     xMin: 0.0104,      // 80%
     quiet: 9,          // quiet zone each side, in modules
     minBarHeight: 0.45,
-    // Vertical fine-tuning from test prints, in inches (positive = further from the label edge).
-    insetTop: -0.5 / 25.4,  // print 1: -1.5 mm; print 2: content sat low, extended up 2 mm
-    insetBottom: 1.5 / 25.4 // print 1: -1.5 mm
+    // Extra 1.5 mm off the top and bottom of the content (from the first test print).
+    // Keep the design centred; a printer that prints low is fixed with its Y offset, not here.
+    insetTop: 1.5 / 25.4,
+    insetBottom: 1.5 / 25.4
   };
 
   // Shrink to fit between max and min size, then truncate with "...".
