@@ -10,6 +10,7 @@ Live at **https://dflimporters.github.io/barcodes/**. Staff sign in with their D
 
 1. Pick products from the library (search by name or UPC), or type a name and UPC into the queue.
    11 digits: the check digit is added for you. 12 or 13 digits: the check digit is verified.
+   Have a photo, screenshot or PDF of a barcode instead? Click **Scan image/PDF**: the number is read from the picture (or the PDF text) and added as a row. Check the name it suggests. The barcode is always redrawn as vector, never printed from the picture.
 2. Need a label with no barcode (e.g. "#10 white envelope without window")? Click **+ Text label**, type anything (Enter makes a new line); it is bolded, centred and sized to fit.
 3. Set the quantity for each row. **Fill sheet** sets it to the labels left on the current sheet.
 4. Reusing a partly used sheet? Click the first free label under **Start position**.

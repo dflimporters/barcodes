@@ -475,6 +475,28 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);
   }
 
+  // ---- Scan a photo / PDF of a barcode -----------------------------------------
+  async function onScanFiles(files) {
+    const list = $('scanMsg');
+    list.innerHTML = '';
+    const note = (cls, text) => list.insertAdjacentHTML('beforeend', `<li class="${cls}">${esc(text)}</li>`);
+    $('scanBtn').disabled = true;
+    $('scanBtn').textContent = 'Scanning…';
+    for (const file of files) {
+      const res = await LabelScan.scanFile(file);
+      if (res.code) {
+        const dup = state.queue.some(r => r.kind !== 'text' && C.parseCode(r.upc).ok &&
+          C.parseCode(r.upc).digits === res.code.digits);
+        addRow(LabelScan.nameFromFile(file.name), res.code.digits);
+        note('ok', `${file.name}: found ${res.code.digits}${dup ? ' (already in the queue, added again)' : ''}. Check the name.`);
+      } else {
+        note('bad', `${file.name}: ${res.error}`);
+      }
+    }
+    $('scanBtn').disabled = false;
+    $('scanBtn').textContent = 'Scan image/PDF';
+  }
+
   function addFromLibrary(idx) {
     const e = state.library[idx];
     if (!e || e.error) return;
@@ -489,6 +511,12 @@
     $('logout').addEventListener('click', doLogout);
 
     $('addRow').addEventListener('click', () => addRow());
+    $('scanBtn').addEventListener('click', () => $('scanFile').click());
+    $('scanFile').addEventListener('change', e => {
+      const files = [...e.target.files];
+      e.target.value = '';
+      if (files.length) onScanFiles(files);
+    });
     $('addTextRow').addEventListener('click', () => addRow('', '', 'text'));
     $('queueBody').addEventListener('input', onQueueInput);
     $('queueBody').addEventListener('click', onQueueClick);

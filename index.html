@@ -62,6 +62,7 @@
           <h2>Print queue</h2>
           <span>
             <button type="button" class="btn-secondary" id="addRow">+ Add row</button>
+            <button type="button" class="btn-secondary" id="scanBtn" title="Read the number from a photo, screenshot or PDF of a barcode">Scan image/PDF</button>
             <button type="button" class="btn-secondary" id="addTextRow" title="Print any text on a label, no barcode">+ Text label</button>
           </span>
         </div>
@@ -71,6 +72,8 @@
             <tbody id="queueBody"></tbody>
           </table>
         </div>
+        <input type="file" id="scanFile" accept="image/*,application/pdf,.pdf" multiple hidden>
+        <ul class="scan-msg" id="scanMsg" aria-live="polite"></ul>
         <div class="summary" id="queueSummary"></div>
       </section>
 
@@ -134,6 +137,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js"></script>
 <script src="js/core.js"></script>
 <script src="js/pdf.js"></script>
+<script src="js/scan.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

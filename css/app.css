@@ -125,3 +125,7 @@ table.queue{width:100%;border-collapse:collapse;font-size:13px;}
 .login-error{color:var(--bad);font-size:12.5px;margin-top:14px;min-height:16px;}
 .ms-signin-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;background:#fff;color:#5E5E5E;border:1px solid #8C8C8C;border-radius:2px;padding:0;height:41px;font-family:'Segoe UI',Arial,sans-serif;font-weight:600;font-size:15px;cursor:pointer;}
 .ms-signin-btn:hover{background:#f3f3f3;}
+.scan-msg{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px;}
+.scan-msg li{margin:2px 0;}
+.scan-msg .ok{color:var(--ok);}
+.scan-msg .bad{color:var(--bad);}
