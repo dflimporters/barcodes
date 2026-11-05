@@ -150,11 +150,57 @@
     return { text: cut.trimEnd() + '...', pt };
   }
 
+  // Free-text label: bold, centred, wrapped on spaces and kept to the user's line breaks.
+  // Picks the largest size (20pt down to 6pt) that fits the label; null if none does.
+  // measure(text, pt, bold) -> width in inches.
+  function textLayout(layout, text, measure) {
+    const lw = layout.label.w;
+    const lh = layout.label.h;
+    const innerW = lw - 2 * layout.padding;
+    const innerH = lh - 2 * layout.padding;
+    const paras = String(text || '').replace(/\r/g, '').split('\n').map(s => s.replace(/[ \t]+/g, ' ').trim());
+    while (paras.length && !paras[paras.length - 1]) paras.pop();
+    while (paras.length && !paras[0]) paras.shift();
+    if (!paras.length) return null;
+    for (let pt = 20; pt >= 6; pt -= 0.5) {
+      const lines = [];
+      let ok = true;
+      for (const para of paras) {
+        if (!para) { lines.push(''); continue; }
+        let cur = '';
+        for (const word of para.split(' ')) {
+          if (measure(word, pt, true) > innerW) { ok = false; break; }
+          const next = cur ? cur + ' ' + word : word;
+          if (!cur || measure(next, pt, true) <= innerW) cur = next;
+          else { lines.push(cur); cur = word; }
+        }
+        if (!ok) break;
+        lines.push(cur);
+      }
+      if (!ok) continue;
+      const lineH = (pt * 1.15) / 72;
+      if (lines.length * lineH > innerH) continue;
+      const capH = (pt * 0.72) / 72;
+      const top = (lh - lines.length * lineH) / 2;
+      const prims = [];
+      lines.forEach((line, i) => {
+        if (line) prims.push({ t: 'text', x: lw / 2, y: top + i * lineH + (lineH + capH) / 2, pt, text: line, align: 'center', bold: true });
+      });
+      return { pt, lines, prims };
+    }
+    return null;
+  }
+
   // Drawing primitives for one label, relative to the label's top-left corner.
   //   { t:'rect', x, y, w, h }                       filled
   //   { t:'text', x, y, pt, text, align }            y is the baseline
   // measure(text, pt) -> width in inches for Helvetica.
   function labelPrimitives(layout, item, measure) {
+    if (item.text !== undefined) {
+      const t = textLayout(layout, item.text, measure);
+      if (!t) throw new Error('Text does not fit on a label');
+      return t.prims;
+    }
     const lw = layout.label.w;
     const lh = layout.label.h;
     const pad = layout.padding;
@@ -349,7 +395,7 @@
 
   const api = {
     LAYOUTS, SPEC, perPage, labelOrigin, checkDigit, parseCode, encode, barRuns,
-    fitText, labelPrimitives, calibrationPrimitives, paginate, remainingOnSheet,
+    fitText, textLayout, labelPrimitives, calibrationPrimitives, paginate, remainingOnSheet,
     parseFilename, parseCsv, buildLibrary
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

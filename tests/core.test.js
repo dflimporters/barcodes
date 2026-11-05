@@ -176,3 +176,15 @@ test('long names shrink then truncate', () => {
   assert.ok(long.text.endsWith('...'));
   assert.ok(measure(long.text, 6) <= 2.465);
 });
+
+test('custom text wraps, centres and fits the label', () => {
+  const m = (t, pt, bold) => (t.length * pt * 0.6) / 72;
+  const r = C.textLayout(layout, '#10 white envelope without window', m);
+  assert.ok(r && r.lines.length >= 2);
+  assert.ok(r.prims.every(p => p.bold && p.align === 'center'));
+  for (const l of r.lines) assert.ok(m(l, r.pt, true) <= layout.label.w - 2 * layout.padding + 1e-9);
+  assert.ok(r.lines.length * r.pt * 1.15 / 72 <= layout.label.h - 2 * layout.padding + 1e-9);
+  assert.equal(C.textLayout(layout, '   ', m), null);
+  assert.equal(C.textLayout(layout, 'x '.repeat(400), m), null);
+  assert.ok(C.labelPrimitives(layout, { text: 'Fragile' }, m).length > 0);
+});

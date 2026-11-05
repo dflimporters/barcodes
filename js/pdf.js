@@ -10,9 +10,9 @@
 
   // Helvetica width in inches, for fitting product names.
   let scratch = null;
-  function measure(text, pt) {
+  function measure(text, pt, bold) {
     if (!scratch) scratch = newDoc();
-    scratch.setFont('helvetica', 'normal');
+    scratch.setFont('helvetica', bold ? 'bold' : 'normal');
     scratch.setFontSize(pt);
     return scratch.getTextWidth(text);
   }
@@ -34,6 +34,7 @@
       } else if (p.t === 'line') {
         doc.line(m.x(ox + p.x1), m.y(oy + p.y1), m.x(ox + p.x2), m.y(oy + p.y2));
       } else if (p.t === 'text') {
+        doc.setFont('helvetica', p.bold ? 'bold' : 'normal');
         doc.setFontSize(p.pt * m.sy);
         doc.text(p.text, m.x(ox + p.x), m.y(oy + p.y), { align: p.align, baseline: 'alphabetic' });
       }

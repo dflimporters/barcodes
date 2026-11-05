@@ -144,9 +144,9 @@
     return n;
   }
 
-  function addRow(name, upc) {
+  function addRow(name, upc, kind) {
     const qty = C.remainingOnSheet(layout, state.start, qtyBefore(state.queue.length));
-    state.queue.push({ id: nextRowId++, name: name || '', upc: upc || '', qty });
+    state.queue.push({ id: nextRowId++, kind: kind || 'barcode', name: name || '', upc: upc || '', qty });
     renderQueue();
     const rows = $('queueBody').querySelectorAll('tr');
     const last = rows[rows.length - 1];
@@ -154,6 +154,11 @@
   }
 
   function rowStatus(row) {
+    if (row.kind === 'text') {
+      if (!row.name.trim()) return { ok: false, html: 'Type the text to print' };
+      if (!C.textLayout(layout, row.name, P.measure)) return { ok: false, html: 'Too much text for one label' };
+      return { ok: true, html: 'Custom text (no barcode)' };
+    }
     const code = C.parseCode(row.upc);
     if (!code.ok) return { ok: false, html: esc(code.error) };
     const kind = code.type === 'upca' ? 'UPC-A' : 'EAN-13';
@@ -169,9 +174,12 @@
       body.innerHTML = state.queue.map((r, i) => {
         const st = rowStatus(r);
         return `<tr data-i="${i}">
-          <td><input class="in-name" type="text" value="${esc(r.name)}" placeholder="Product name" aria-label="Product name"></td>
-          <td><input class="in-upc mono" type="text" inputmode="numeric" value="${esc(r.upc)}" placeholder="11 or 12 digits" aria-label="UPC">
-              <div class="status ${st.ok ? 'ok' : 'bad'}">${st.html}</div></td>
+          ${r.kind === 'text'
+            ? `<td colspan="2"><textarea class="in-name in-text" rows="2" placeholder="Text to print on the label" aria-label="Label text">${esc(r.name)}</textarea>
+              <div class="status ${st.ok ? 'ok' : 'bad'}">${st.html}</div></td>`
+            : `<td><input class="in-name" type="text" value="${esc(r.name)}" placeholder="Product name" aria-label="Product name"></td>
+              <td><input class="in-upc mono" type="text" inputmode="numeric" value="${esc(r.upc)}" placeholder="11 or 12 digits" aria-label="UPC">
+              <div class="status ${st.ok ? 'ok' : 'bad'}">${st.html}</div></td>`}
           <td><input class="in-qty" type="number" min="1" max="${MAX_LABELS}" step="1" value="${r.qty}" aria-label="Quantity"></td>
           <td><button type="button" class="btn-link act-fill" title="Set qty to the labels left on this sheet">Fill sheet</button></td>
           <td><button type="button" class="btn-x act-remove" aria-label="Remove row">&times;</button></td>
@@ -185,7 +193,15 @@
     const tr = e.target.closest('tr[data-i]');
     if (!tr) return;
     const row = state.queue[+tr.dataset.i];
-    if (e.target.classList.contains('in-name')) row.name = e.target.value;
+    if (e.target.classList.contains('in-name')) {
+      row.name = e.target.value;
+      if (row.kind === 'text') {
+        const st = rowStatus(row);
+        const box = tr.querySelector('.status');
+        box.className = 'status ' + (st.ok ? 'ok' : 'bad');
+        box.innerHTML = st.html;
+      }
+    }
     if (e.target.classList.contains('in-upc')) {
       row.upc = e.target.value;
       const st = rowStatus(row);
@@ -216,8 +232,15 @@
     const problems = [];
     const items = [];
     state.queue.forEach((r, i) => {
+      const label = r.name.trim().split('\n')[0] || `Row ${i + 1}`;
+      if (r.kind === 'text') {
+        const st = rowStatus(r);
+        if (!st.ok) problems.push(`${label}: ${st.html}`);
+        else if (!(r.qty > 0)) problems.push(`${label}: quantity must be at least 1`);
+        else items.push({ name: r.name.trim(), text: r.name, qty: r.qty });
+        return;
+      }
       const code = C.parseCode(r.upc);
-      const label = r.name.trim() || `Row ${i + 1}`;
       if (!code.ok) problems.push(`${label}: ${code.error}`);
       else if (!(r.qty > 0)) problems.push(`${label}: quantity must be at least 1`);
       else items.push({ name: r.name.trim(), code, qty: r.qty });
@@ -316,7 +339,7 @@
   function svgPrim(p) {
     if (p.t === 'rect') return `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}"/>`;
     const anchor = p.align === 'center' ? 'middle' : p.align === 'right' ? 'end' : 'start';
-    return `<text x="${p.x}" y="${p.y}" font-size="${p.pt / 72}" text-anchor="${anchor}">${esc(p.text)}</text>`;
+    return `<text x="${p.x}" y="${p.y}" font-size="${p.pt / 72}" text-anchor="${anchor}"${p.bold ? ' font-weight="bold"' : ''}>${esc(p.text)}</text>`;
   }
 
   // ---- Output ----------------------------------------------------------------
@@ -466,6 +489,7 @@
     $('logout').addEventListener('click', doLogout);
 
     $('addRow').addEventListener('click', () => addRow());
+    $('addTextRow').addEventListener('click', () => addRow('', '', 'text'));
     $('queueBody').addEventListener('input', onQueueInput);
     $('queueBody').addEventListener('click', onQueueClick);
 
