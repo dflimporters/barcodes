@@ -12,9 +12,9 @@ Live at **https://dflimporters.github.io/barcodes/**. Staff sign in with their D
    11 digits: the check digit is added for you. 12 or 13 digits: the check digit is verified.
 2. Need a label with no barcode (e.g. "#10 white envelope without window")? Click **+ Text label**, type anything (Enter makes a new line); it is bolded, centred and sized to fit.
 3. Set the quantity for each row. **Fill sheet** sets it to the labels left on the current sheet.
-3. Reusing a partly used sheet? Click the first free label under **Start position**.
-4. Choose your printer under **Printer calibration** (see below).
-5. **Open PDF** and print it. **Print at Actual size / 100%, Fit to page OFF, Paper size Letter.**
+4. Reusing a partly used sheet? Click the first free label under **Start position**.
+5. Choose your printer under **Printer calibration** (see below).
+6. **Open PDF** and print it. **Print at Actual size / 100%, Fit to page OFF, Paper size Letter.**
 
 ## Calibrating a new printer
 
